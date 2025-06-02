@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Night. Inc MD5 </title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: auto; }
+        .result { margin-top: 20px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #f0f0f0; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/spark-md5@3.0.2/spark-md5.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <img src="logo.png" alt="Logo" style="max-width:120px; display:block; margin:auto; margin-bottom:20px;" />
+        <h2 style="text-align:center;">Night. Inc.</h2>
+        <div style="text-align:center; font-weight:bold; margin-bottom:10px;">PHÒNG QUẢN LÝ CHẤT LƯỢNG PHẦN MỀM</div>
+        <div style="text-align:center; margin-bottom:20px;">
+            Tel: (+84)93-198-173-1 &nbsp; | &nbsp; E-Mail: namb20994@gmail.com<br>
+            Website: <a href="https://fireos.my.canva.site/night" target="_blank">fireos.my.canva.site/night</a>
+        </div>
+        <div style="margin-bottom:20px; color:#333; font-weight:bold; text-align:center;">
+            So sánh file với MD5 của file bạn nhận được từ Night. Inc.<br>Hãy chọn file để so sánh và tải file lên để kiểm tra MD5.
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
+            <button id="chooseDataFileBtn" type="button">Chọn file để so sánh</button>
+            <label for="fileInput" style="margin:0;">
+                <span style="display:inline-block; background:#007bff; color:#fff; padding:6px 12px; border-radius:4px; cursor:pointer;">Tải file lên để kiểm tra MD5</span>
+            </label>
+            <input type="file" name="file" id="fileInput" required accept=".pdf,.docx" style="display:none;" />
+        </div>
+        <div class="result" id="result"></div>
+        <div style="margin-bottom:10px;">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm file..." style="width:100%;padding:6px;" />
+        </div>
+        <table id="dataTable" style="width:100%; margin-bottom:30px;">
+            <thead>
+                <tr><th>File gốc của Night. Inc</th><th>Tải về</th></tr>
+            </thead>
+            <tbody id="dataList"></tbody>
+        </table>
+        <table id="fileTable" style="display:none;">
+            <thead>
+                <tr><th>Tên file</th><th>Tên rút gọn</th><th>Loại</th><th>MD5</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <script>
+        // Lấy danh sách file docx thật từ data/index.json
+        let dataFiles = [];
+        async function fetchDataFiles() {
+            try {
+                const res = await fetch('data/index.json');
+                dataFiles = await res.json();
+                renderDataList();
+            } catch (e) {
+                document.getElementById('dataList').innerHTML = '<tr><td>Không thể tải danh sách file từ data/index.json</td></tr>';
+            }
+        }
+
+        let selectedDataFile = null;
+        document.getElementById('chooseDataFileBtn').addEventListener('click', function() {
+            document.getElementById('searchInput').focus();
+        });
+        function renderDataList(filter = '') {
+            const tbody = document.getElementById('dataList');
+            tbody.innerHTML = '';
+            dataFiles.filter(f => f.toLowerCase().includes(filter.toLowerCase())).forEach(f => {
+                const safeName = f.replace(/'/g, "\\'");
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><a href="#" onclick="getMd5ForDataFile('${safeName}');return false;">data/${f}</a></td><td><a href="data/${encodeURIComponent(f)}" download>Tải về</a></td>`;
+                tbody.appendChild(row);
+            });
+        }
+        document.getElementById('searchInput').addEventListener('input', function() {
+            renderDataList(this.value);
+        });
+        fetchDataFiles();
+
+        let lastMd5Data = null;
+        async function getMd5ForDataFile(filename) {
+            document.getElementById('result').textContent = 'Đang tính MD5 cho ' + filename + '...';
+            try {
+                const res = await fetch('data/' + encodeURIComponent(filename), {cache: 'reload'});
+                const blob = await res.blob();
+                const arrayBuffer = await blob.arrayBuffer();
+                const md5 = SparkMD5.ArrayBuffer.hash(arrayBuffer);
+                const sizeKB = (blob.size / 1024).toFixed(1);
+                lastMd5Data = md5;
+                selectedDataFile = filename;
+                document.getElementById('result').textContent = `MD5 của ${filename}: ${md5} (Kích thước: ${sizeKB} KB)`;
+            } catch (e) {
+                document.getElementById('result').textContent = 'Không thể tải hoặc tính MD5 file này!';
+            }
+        }
+
+        const uploadedFiles = [];
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files.length) return;
+            const file = fileInput.files[0];
+            const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!allowedTypes.includes(file.type) && !file.name.endsWith('.pdf') && !file.name.endsWith('.docx')) {
+                document.getElementById('result').textContent = 'Chỉ cho phép PDF và DOCX.';
+                return;
+            }
+            document.getElementById('result').textContent = 'Đang tính MD5...';
+            const arrayBuffer = await file.arrayBuffer();
+            const md5 = SparkMD5.ArrayBuffer.hash(arrayBuffer);
+            const name = file.name.replace(/\.[^/.]+$/, "");
+            const source = file.name.toLowerCase().endsWith('.docx') ? 'docx' : (file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : '');
+            uploadedFiles.push({ name: file.name, baseName: name, source, md5 });
+            let compareMsg = '';
+            if (lastMd5Data) {
+                compareMsg = `<br>So sánh với file data đã chọn: <b>${lastMd5Data === md5 ? 'Trùng khớp' : 'KHÔNG trùng khớp'}</b>`;
+            }
+            document.getElementById('result').innerHTML = `MD5: ${md5}${compareMsg}`;
+            updateTable();
+        });
+
+        function updateTable() {
+            const table = document.getElementById('fileTable');
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            uploadedFiles.forEach(f => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${f.name}</td><td>${f.baseName}</td><td>${f.source}</td><td>${f.md5}</td>`;
+                tbody.appendChild(row);
+            });
+            table.style.display = uploadedFiles.length ? '' : 'none';
+        }
+    </script>
+</body>
+</html>
