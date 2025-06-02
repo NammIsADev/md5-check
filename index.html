@@ -117,7 +117,7 @@
             uploadedFiles.push({ name: file.name, baseName: name, source, md5 });
             let compareMsg = '';
             if (lastMd5Data) {
-                compareMsg = `<br>So sánh với file data đã chọn: <b>${lastMd5Data === md5 ? 'Trùng khớp' : 'KHÔNG trùng khớp'}</b>`;
+                compareMsg = `<br>So sánh với file data đã chọn: <b>${lastMd5Data === md5 ? 'hên đó em, file gốc chưa bị chỉnh sửa' : 'em ơi file này bị chỉnh sửa r'}</b>`;
             }
             document.getElementById('result').innerHTML = `MD5: ${md5}${compareMsg}`;
             updateTable();
